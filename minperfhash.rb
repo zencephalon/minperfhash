@@ -24,13 +24,19 @@ class MinPerfHash
     d
   end
 
+  def [](key)
+    d = @intermediate[hash(0, key) % @intermediate.size]
+    return @values[-d - 1] if d < 0
+    return @values[hash(d, key) % @values.size]
+  end
+
   # Take a Ruby hash and create a minimal perfect hash.
   def initialize(h)
     size = h.size
 
     buckets = Array.new(size) {[]}
-    intermediate = Array.new(size) {0}
-    values = Array.new(size) {[nil]}
+    @intermediate = Array.new(size) {0}
+    @values = Array.new(size) {nil}
 
     # Step 1: Place all of the keys into buckets
     h.keys.each do |key|
@@ -40,16 +46,18 @@ class MinPerfHash
     # Step 2: Sort the buckets and process the ones with the most items first.
     buckets.sort_by! {|arr| arr.size}
 
-    buckets.each do |bucket|
-      break if bucket.size <= 1
-
+    while (bucket = buckets.pop).size > 1
       d, item, slots = 1, 0, []
+      puts "hello"
 
       # Repeatedly try different values of d until we find a hash function
       # that places all items in the bucket into free slots
       while item < bucket.size
-        slot = hash(d, bucket[item]) % size
-        if !values[slot].nil? or slots.include? slot
+        puts item
+        puts slot = hash(d, bucket[item]) % size
+        p !@values[slot].nil?
+        p slots
+        if !@values[slot].nil? or slots.include? slot
           d += 1
           item, slots = 0, []
         else
@@ -58,11 +66,11 @@ class MinPerfHash
         end
       end
 
-      intermediate[hash(0, bucket[0]) % size] = d
+      @intermediate[hash(0, bucket[0]) % size] = d
 
       # Finally store the values from this bucket
       (0...bucket.size).each do |i|
-        values[slots[i]] = h[bucket[i]]
+        @values[slots[i]] = h[bucket[i]]
       end
     end
 
@@ -71,10 +79,14 @@ class MinPerfHash
     # this.
     freelist = []
     (0...size).each do |i|
-      freelist << i if values[i].nil?
+      freelist << i if @values[i].nil?
     end
 
-    #for 
-      
+    buckets.each do |bucket|
+      break if bucket.size == 0
+      slot = freelist.pop
+      @intermediate[hash(0, bucket[0]) % size] = -slot - 1
+      @values[slot] = h[bucket[0]]
+    end
   end
 end
